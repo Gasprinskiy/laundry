@@ -9,8 +9,6 @@ services:
     environment:
       DATABASE_URL: host=db user=$POSTGRES_USER password=$POSTGRES_PASSWORD dbname=$POSTGRES_DB port=$DB_PORT sslmode=disable
       PORT: $APP_PORT
-      JWT_SECRET: $JWT_SECRET
-      JWT_SECRET_LIFE_TIME: $JWT_SECRET_LIFE_TIME
     ports:
       - "$APP_PORT:$APP_PORT"
 
@@ -24,7 +22,7 @@ services:
       POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
       PGDATA: /data
     volumes:
-      - ./pg:/docker-entrypoint-initdb.d
+      - ./dump.sql:/docker-entrypoint-initdb.d/dump.sql
       - ./pg/data:/data
     ports:
       - "$DB_PORT:$DB_PORT"
