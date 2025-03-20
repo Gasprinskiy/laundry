@@ -32,8 +32,10 @@ func main() {
 
 	repo := rimport.NewRepositoryImports()
 	servicesUsecase := usecase.NewServicesUsecase(repo, db)
+	ordersUsecase := usecase.NewOrdersUsecase(repo, db)
 
 	external.RegiserServicesExternal(servicesUsecase, r)
+	external.RegiserOrdersExternal(ordersUsecase, r)
 
 	r.Run(conf.Port)
 }

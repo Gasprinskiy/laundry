@@ -29,7 +29,6 @@ func RegiserServicesExternal(
 		group.GET("/:id/items", ext.GetServiceItemsById)
 		group.GET("/:id/sub", ext.GetServiceSubServiceById)
 		group.GET("/sub/:id/items", ext.GetSubServiceItemsById)
-		// group.POST("/logout", ext.Logout)
 	}
 
 }
