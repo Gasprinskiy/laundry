@@ -23,5 +23,6 @@ type UnitPriceModifier struct {
 type PriceModifierCommonData struct {
 	Percent     float64 `json:"percent"`
 	Description string  `json:"description"`
+	ModifierID  int     `json:"modifier_id"`
 	Modifier    int     `json:"modifier"`
 }

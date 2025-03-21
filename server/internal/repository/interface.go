@@ -23,8 +23,7 @@ type FulfillmentTypes interface {
 }
 
 type PriceModifiers interface {
-	FindPriceModifierByID(tx *sqlx.Tx, id int) (data pricemodifiers.PriceModifier, err error)
-	FindAllPriceModifiers(tx *sqlx.Tx) (data []pricemodifiers.PriceModifier, err error)
+	FindFulfillmentModifierByID(tx *sqlx.Tx, id int) (data pricemodifiers.PriceModifier, err error)
 	FindAllItemTypeModifiers(tx *sqlx.Tx) (data []pricemodifiers.PriceModifier, err error)
 	FindAllUnitModifiers(tx *sqlx.Tx) (data []pricemodifiers.UnitPriceModifier, err error)
 }

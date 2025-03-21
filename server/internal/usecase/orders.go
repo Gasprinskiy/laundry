@@ -5,10 +5,14 @@ import (
 	"laundry/internal/entity/orders"
 	pricemodifiers "laundry/internal/entity/price-modifiers"
 	"laundry/internal/entity/services"
+	"laundry/internal/entity/units"
 	"laundry/internal/repository/rimport"
+	"laundry/tools/appmath"
 	"laundry/tools/slice"
+	"laundry/tools/sqlnull"
 	transactiongeneric "laundry/tools/transaction-generic"
 
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -27,35 +31,28 @@ func NewOrdersUsecase(
 	}
 }
 
-type Shit struct {
-	Total     float64
-	Final     float64
-	Discounts []pricemodifiers.PriceModifierCommonData
-	Markups   []pricemodifiers.PriceModifierCommonData
-}
-
-func (u *OrdersUsecase) ProcessOrder(param orders.CreateOrderParam) (result []Shit, err error) {
+func (u *OrdersUsecase) CalculateOrder(param orders.CalculateOrderParam) (orders.CalculateOrderResponse, error) {
 	return transactiongeneric.HandleMethodWithTransaction(
 		u.db,
-		func(tx *sqlx.Tx) ([]Shit, error) {
+		func(tx *sqlx.Tx) (res orders.CalculateOrderResponse, err error) {
 			serviceItems, err := u.repo.Services.FindAllServiceItems(tx)
 			if err != nil {
-				return result, err
+				return
 			}
 
 			subServiceItems, err := u.repo.Services.FindAllSubServiceItems(tx)
 			if err != nil {
-				return result, err
+				return
 			}
 
 			unitModifiers, err := u.repo.PriceModifiers.FindAllUnitModifiers(tx)
 			if err != nil {
-				return result, err
+				return
 			}
 
 			priceModifiers, err := u.repo.PriceModifiers.FindAllItemTypeModifiers(tx)
 			if err != nil {
-				return result, err
+				return
 			}
 
 			ableItems := make(map[string]services.ServiceItems)
@@ -72,28 +69,91 @@ func (u *OrdersUsecase) ProcessOrder(param orders.CreateOrderParam) (result []Sh
 			}
 
 			for _, priceM := range priceModifiers {
-				ablePriceModifiers[priceM.ModifierID] = priceM
+				ablePriceModifiers[priceM.ID] = priceM
 			}
 
+			var calculatedServices []orders.CalculateOrderResponseService
+
 			for _, service := range param.Services {
-				processed := u.processSingleService(orders.ProcessSingleServiceParam{
+				processed := u.calculateSingleService(orders.CalculateSingleServiceParam{
 					OrderedServices:    service,
 					AbleItems:          ableItems,
 					AbleUnitModifiers:  ableUnitModifiers,
 					AblePriceModifiers: ablePriceModifiers,
 				})
 
-				result = append(result, processed)
+				calculatedServices = append(calculatedServices, processed)
 			}
 
-			return result, nil
+			reduce := slice.Reduce(
+				calculatedServices,
+				func(
+					acc orders.CalculateOrderReduceResult,
+					item orders.CalculateOrderResponseService,
+					index int,
+				) orders.CalculateOrderReduceResult {
+					acc.Final += item.Final
+					acc.Total += item.Total
+					return acc
+				},
+				orders.CalculateOrderReduceResult{
+					Total: 0,
+					Final: 0,
+				},
+			)
+
+			final := reduce.Final
+
+			var fulfillmentPriceModifier pricemodifiers.PriceModifier
+			var discounts []pricemodifiers.PriceModifierCommonData
+			var markups []pricemodifiers.PriceModifierCommonData
+
+			if param.Fulfillment.ModifierID.Valid {
+				fulfillmentPriceModifier, err = u.repo.PriceModifiers.FindFulfillmentModifierByID(tx, param.Fulfillment.ModifierID.GetInt())
+				if err != nil {
+					return
+				}
+
+				modifier := pricemodifiers.PriceModifierCommonData{
+					Percent:     fulfillmentPriceModifier.Percent,
+					Description: fulfillmentPriceModifier.Description.String,
+					Modifier:    fulfillmentPriceModifier.Modifier,
+					ModifierID:  fulfillmentPriceModifier.ModifierID,
+				}
+
+				finalResult, isDiscount := u.countMarkupsAndDiscounts(
+					modifier.Modifier,
+					modifier.Percent,
+					final,
+				)
+
+				final = finalResult
+
+				if isDiscount {
+					discounts = append(discounts, modifier)
+				} else {
+					markups = append(markups, modifier)
+				}
+			}
+
+			res = orders.CalculateOrderResponse{
+				TemporaryID:   uuid.New().String(),
+				OrderServices: calculatedServices,
+				Fulfillment:   param.Fulfillment,
+				Discounts:     discounts,
+				Markups:       markups,
+				Total:         reduce.Total,
+				Final:         appmath.RoundToDecimals(final, 1),
+			}
+
+			return res, nil
 		},
 		"Не удалось обработать заказ",
 	)
 
 }
 
-func (u *OrdersUsecase) processSingleService(param orders.ProcessSingleServiceParam) Shit {
+func (u *OrdersUsecase) calculateSingleService(param orders.CalculateSingleServiceParam) orders.CalculateOrderResponseService {
 	var serviceID int
 
 	if param.OrderedServices.SubServiceID.Valid {
@@ -102,44 +162,50 @@ func (u *OrdersUsecase) processSingleService(param orders.ProcessSingleServicePa
 		serviceID = param.OrderedServices.ServiceID
 	}
 
-	chosenServices := []orders.ProcessSingleServiceItemReduce{}
+	chosenItems := []orders.ServiceCommonResponseItem{}
 
 	for _, chosenItem := range param.OrderedServices.Items {
 		key := fmt.Sprintf("%d:%d", serviceID, chosenItem.ID)
-		chosenServices = append(chosenServices, orders.ProcessSingleServiceItemReduce{
-			Item:     param.AbleItems[key],
-			Quantity: chosenItem.Quantity,
+		ableItem := param.AbleItems[key]
+		chosenItems = append(chosenItems, orders.ServiceCommonResponseItem{
+			ID:          ableItem.ID,
+			ItemID:      ableItem.ItemID,
+			ItemName:    ableItem.ItemName,
+			PriceForOne: ableItem.Price,
+			PriceForAll: appmath.RoundToDecimals(ableItem.Price*chosenItem.Quantity, 1),
+			Quantity:    chosenItem.Quantity,
 		})
 	}
 
 	var commonModifiers []pricemodifiers.PriceModifierCommonData
 
-	if param.OrderedServices.ItemsTypeModifierID.Valid {
-		modifierId := param.OrderedServices.ItemsTypeModifierID.GetInt()
-		priceModifier := param.AblePriceModifiers[modifierId]
+	priceModifier, exists := param.AblePriceModifiers[param.OrderedServices.ItemsTypeID]
 
+	if exists {
 		commonModifiers = append(commonModifiers, pricemodifiers.PriceModifierCommonData{
 			Percent:     priceModifier.Percent,
 			Description: priceModifier.Description.String,
 			Modifier:    priceModifier.Modifier,
+			ModifierID:  priceModifier.ModifierID,
 		})
 	}
 
+	var unitPriceModifierID int
 	unitPriceModifier := param.AbleUnitModifiers[param.OrderedServices.UnitID]
 
 	reduced := slice.Reduce(
-		chosenServices,
+		chosenItems,
 		func(
-			acc orders.ProcessSingleServiceItemReduceResult,
-			value orders.ProcessSingleServiceItemReduce,
+			acc orders.CalculateSingleServiceItemReduceResult,
+			value orders.ServiceCommonResponseItem,
 			index int,
-		) orders.ProcessSingleServiceItemReduceResult {
-			acc.TotalSub = acc.TotalSub + (value.Item.Price * value.Quantity)
-			acc.TotalUnitQuantity = acc.TotalUnitQuantity + value.Quantity
+		) orders.CalculateSingleServiceItemReduceResult {
+			acc.TotalSum += value.PriceForAll
+			acc.TotalUnitQuantity += value.Quantity
 			return acc
 		},
-		orders.ProcessSingleServiceItemReduceResult{
-			TotalSub:          0,
+		orders.CalculateSingleServiceItemReduceResult{
+			TotalSum:          0,
 			TotalUnitQuantity: 0,
 		},
 	)
@@ -149,15 +215,15 @@ func (u *OrdersUsecase) processSingleService(param orders.ProcessSingleServicePa
 			Percent:     unitPriceModifier.Percent,
 			Description: unitPriceModifier.Description.String,
 			Modifier:    unitPriceModifier.Modifier,
+			ModifierID:  unitPriceModifier.ModifierID,
 		})
+		unitPriceModifierID = unitPriceModifier.ID
 	}
 
 	var discounts []pricemodifiers.PriceModifierCommonData
 	var markups []pricemodifiers.PriceModifierCommonData
 
-	final := reduced.TotalSub
-
-	fmt.Println("commonModifiers: ", commonModifiers)
+	final := reduced.TotalSum
 
 	for _, modifer := range commonModifiers {
 		result, isDiscount := u.countMarkupsAndDiscounts(
@@ -175,31 +241,36 @@ func (u *OrdersUsecase) processSingleService(param orders.ProcessSingleServicePa
 		}
 	}
 
-	return Shit{
-		Total:     reduced.TotalSub,
-		Final:     final,
-		Discounts: discounts,
-		Markups:   markups,
+	return orders.CalculateOrderResponseService{
+		ServiceID:      param.OrderedServices.ServiceID,
+		SubServiceID:   param.OrderedServices.SubServiceID,
+		ServiceName:    param.OrderedServices.ServiceName,
+		SubServiceName: param.OrderedServices.SubServiceName,
+		Total:          appmath.RoundToDecimals(reduced.TotalSum, 1),
+		Final:          appmath.RoundToDecimals(final, 1),
+		Items:          chosenItems,
+		Discounts:      discounts,
+		Markups:        markups,
+		UnitID:         param.OrderedServices.UnitID,
+		UnitTitle:      units.UnitTitle[param.OrderedServices.UnitID],
+		UnitModifierID: sqlnull.NewInt64(unitPriceModifierID),
+		ItemsTypeID:    param.OrderedServices.ItemsTypeID,
 	}
 }
 
 func (u *OrdersUsecase) countMarkupsAndDiscounts(
-	modifierID int,
+	modifier int,
 	percent float64,
 	sum float64,
 ) (result float64, isDiscount bool) {
 
-	if modifierID == pricemodifiers.ModifierDiscount {
-		isDiscount = true
-	}
-
-	switch modifierID {
+	switch modifier {
 	case pricemodifiers.ModifierDiscount:
 		isDiscount = true
-		result = sum - (sum * percent / 100)
+		result = sum - appmath.CaclPercentFromSum(sum, percent)
 
 	case pricemodifiers.ModifierMarkup:
-		result = sum + (sum * percent / 100)
+		result = sum + appmath.CaclPercentFromSum(sum, percent)
 	}
 
 	return

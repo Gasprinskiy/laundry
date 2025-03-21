@@ -25,20 +25,20 @@ func RegiserOrdersExternal(
 
 	group := ext.gin.Group("/orders")
 	{
-		group.POST("", ext.Create)
+		group.POST("/calculate", ext.Calculate)
 	}
 
 }
 
-func (e *OrdersExternal) Create(c *gin.Context) {
-	param := orders.CreateOrderParam{}
+func (e *OrdersExternal) Calculate(c *gin.Context) {
+	param := orders.CalculateOrderParam{}
 
 	if err := c.BindJSON(&param); err != nil {
 		c.JSON(global.ErrStatusCodes[global.ErrInvalidParam], gin.H{"message": err.Error()})
 		return
 	}
 
-	data, err := e.ordersUsecase.ProcessOrder(param)
+	data, err := e.ordersUsecase.CalculateOrder(param)
 	if err != nil {
 		c.JSON(global.ErrStatusCodes[err], gin.H{"message": err.Error()})
 		return

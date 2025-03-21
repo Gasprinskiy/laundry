@@ -1,2 +1,3 @@
 pg
+redis_data
 dump_last.sql

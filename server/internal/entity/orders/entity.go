@@ -5,75 +5,76 @@ import (
 	pricemodifiers "laundry/internal/entity/price-modifiers"
 	"laundry/internal/entity/services"
 	"laundry/tools/sqlnull"
-	"time"
 )
 
-type ServiceCommonItem struct {
-	ID int `json:"id"`
-	// ItemID   int     `json:"item_id"`
+type CalculateOrderItem struct {
+	ID       int     `json:"id"`
 	Quantity float64 `json:"quantity"`
 }
 
 type ServiceCommonResponseItem struct {
-	ID       int     `json:"id"`
-	ItemID   int     `json:"item_id"`
-	ItemName string  `json:"item_name"`
-	Quantity float64 `json:"quantity"`
-	Price    float64 `json:"price"`
+	ID          int     `json:"id"`
+	ItemID      int     `json:"item_id"`
+	ItemName    string  `json:"item_name"`
+	Quantity    float64 `json:"quantity"`
+	PriceForOne float64 `json:"price_for_one"`
+	PriceForAll float64 `json:"price_for_all"`
 }
 
-type CreateOrderServiceParam struct {
-	ServiceID int `json:"service_id"`
-	// ServiceName         string              `json:"service_name"`
-	SubServiceID        sqlnull.NullInt64   `json:"subservice_id"`
-	Items               []ServiceCommonItem `json:"items"`
-	UnitID              int                 `json:"unit_id"`
-	ItemsTypeModifierID sqlnull.NullInt64   `json:"modifier_id"`
+type CalculateOrderService struct {
+	ServiceID      int                  `json:"service_id"`
+	ServiceName    string               `json:"service_name"`
+	SubServiceID   sqlnull.NullInt64    `json:"subservice_id"`
+	SubServiceName sqlnull.NullString   `json:"subservice_name"`
+	Items          []CalculateOrderItem `json:"items"`
+	UnitID         int                  `json:"unit_id"`
+	ItemsTypeID    int                  `json:"item_type_id"`
 }
 
-type CreateOrderResponseServiceParam struct {
-	ServiceID    int                         `json:"service_id"`
-	ServiceName  string                      `json:"service_name"`
-	SubServiceID sqlnull.NullInt64           `json:"subservice_id"`
-	Items        []ServiceCommonResponseItem `json:"items"`
-	UnitID       int                         `json:"unit_id"`
+type CalculateOrderResponseService struct {
+	ServiceID      int                                      `json:"service_id"`
+	ServiceName    string                                   `json:"service_name"`
+	SubServiceID   sqlnull.NullInt64                        `json:"subservice_id"`
+	SubServiceName sqlnull.NullString                       `json:"subservice_name"`
+	Total          float64                                  `json:"total"`
+	Final          float64                                  `json:"final"`
+	Items          []ServiceCommonResponseItem              `json:"items"`
+	Discounts      []pricemodifiers.PriceModifierCommonData `json:"discounts"`
+	Markups        []pricemodifiers.PriceModifierCommonData `json:"markups"`
+	UnitID         int                                      `json:"unit_id"`
+	UnitTitle      string                                   `json:"unit_title"`
+	UnitModifierID sqlnull.NullInt64                        `json:"unit_modifier_id"`
+	ItemsTypeID    int                                      `json:"items_type_id"`
 }
 
-type CreateOrderParam struct {
-	// UserName        string                           `json:"user_name"`
-	// UserPhoneNumber string                           `json:"user_phone_number"`
-	// Fulfillment     fulfillmenttypes.FulfillmentType `json:"fulfillment"`
-	Services []CreateOrderServiceParam `json:"services"`
+type CalculateOrderParam struct {
+	Fulfillment fulfillmenttypes.FulfillmentType `json:"fulfillment"`
+	Services    []CalculateOrderService          `json:"services"`
 }
 
-type OrderPriceModificators struct {
-	Title   string `json:"title"`
-	Percent string `json:"percent"`
+type CalculateOrderResponse struct {
+	TemporaryID   string                                   `json:"temporary_id"`
+	OrderServices []CalculateOrderResponseService          `json:"order_services"`
+	Fulfillment   fulfillmenttypes.FulfillmentType         `json:"fulfillment"`
+	Discounts     []pricemodifiers.PriceModifierCommonData `json:"discounts"`
+	Markups       []pricemodifiers.PriceModifierCommonData `json:"markups"`
+	Total         float64                                  `json:"total"`
+	Final         float64                                  `json:"final"`
 }
 
-type CreateOrderResponse struct {
-	OrderID       int                               `json:"order_id"`
-	OrderDate     time.Time                         `json:"order_date"`
-	OrderServices []CreateOrderResponseServiceParam `json:"order_services"`
-	Fulfillment   fulfillmenttypes.FulfillmentType  `json:"fulfillment"`
-	Discounts     []OrderPriceModificators          `json:"discounts"`
-	Markups       []OrderPriceModificators          `json:"markups"`
-	Total         float64                           `json:"total"`
-}
-
-type ProcessSingleServiceParam struct {
-	OrderedServices    CreateOrderServiceParam
+type CalculateSingleServiceParam struct {
+	OrderedServices    CalculateOrderService
 	AbleItems          map[string]services.ServiceItems
 	AbleUnitModifiers  map[int]pricemodifiers.UnitPriceModifier
 	AblePriceModifiers map[int]pricemodifiers.PriceModifier
 }
 
-type ProcessSingleServiceItemReduce struct {
-	Item     services.ServiceItems
-	Quantity float64
+type CalculateSingleServiceItemReduceResult struct {
+	TotalSum          float64
+	TotalUnitQuantity float64
 }
 
-type ProcessSingleServiceItemReduceResult struct {
-	TotalSub          float64
-	TotalUnitQuantity float64
+type CalculateOrderReduceResult struct {
+	Total float64
+	Final float64
 }

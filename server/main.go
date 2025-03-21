@@ -28,6 +28,12 @@ func main() {
 		log.Panic("Ошибка при пинге базы данных: ", err)
 	}
 
+	// rdb := redis.NewClient(&redis.Options{
+	// 	Addr:     conf.RedisPort,
+	// 	Password: conf.RedisPass,
+	// 	DB:       0,
+	// })
+
 	r := gin.Default()
 
 	repo := rimport.NewRepositoryImports()

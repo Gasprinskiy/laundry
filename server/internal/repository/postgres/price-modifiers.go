@@ -13,32 +13,20 @@ func NewPriceModifiersRepository() repository.PriceModifiers {
 	return &priceModifiersRepository{}
 }
 
-func (r *priceModifiersRepository) FindPriceModifierByID(tx *sqlx.Tx, id int) (data pricemodifiers.PriceModifier, err error) {
+func (r *priceModifiersRepository) FindFulfillmentModifierByID(tx *sqlx.Tx, id int) (data pricemodifiers.PriceModifier, err error) {
 	sqlQuery := `
 	SELECT 
-		pm.id,
+		flt.id,
+		pm.id as modifier_id,
+		pmt.id as modifier,
 		pm.percent,
-		pmt.id as modifier
-	FROM public.price_modifiers pm
+		flt.description
+	FROM public.fulfillment_types flt
+		JOIN public.price_modifiers pm ON pm.id = flt.modifier_id
 		JOIN public.price_modifiers_types pmt ON pmt.id = pm.modifier_type_id
 	WHERE pm.id = $1`
 
 	err = tx.Get(&data, sqlQuery, id)
-
-	return
-}
-
-func (r *priceModifiersRepository) FindAllPriceModifiers(tx *sqlx.Tx) (data []pricemodifiers.PriceModifier, err error) {
-	sqlQuery := `
-	SELECT 
-		pm.id,
-		pm.percent,
-		pmt.id as modifier,
-	FROM public.price_modifiers pm
-		JOIN public.price_modifiers_types pmt ON pmt.id = pm.modifier_type_id
-	`
-
-	err = tx.Select(&data, sqlQuery)
 
 	return
 }
