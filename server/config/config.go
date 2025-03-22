@@ -14,6 +14,7 @@ type Config struct {
 	RedisPort string
 	RedisPass string
 	RedisTtl  int
+	ClientUrl string
 }
 
 // NewConfig загружает переменные из .env и возвращает структуру Config
@@ -26,6 +27,7 @@ func NewConfig() *Config {
 	return &Config{
 		DbUrl:     os.Getenv("DATABASE_URL"),
 		RedisPass: os.Getenv("REDIS_PASSWORD"),
+		ClientUrl: os.Getenv("CLIENT_URL"),
 		Port:      fmt.Sprintf(":%s", os.Getenv("PORT")),
 		RedisPort: fmt.Sprintf("redis:%s", os.Getenv("REDIS_PORT")),
 		RedisTtl:  redisTtl,

@@ -9,6 +9,7 @@ import (
 	"laundry/redisclient"
 	"log"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
@@ -45,6 +46,14 @@ func main() {
 	defer rdb.Close()
 
 	r := gin.Default()
+
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{conf.ClientUrl},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+	}))
 
 	redisCleint := redisclient.NewRedisClient(rdb, conf)
 	repo := rimport.NewRepositoryImports()
