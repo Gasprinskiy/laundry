@@ -1,6 +1,7 @@
 package services
 
 import (
+	fulfillmenttypes "laundry/internal/entity/fulfillment-types"
 	"laundry/internal/entity/items"
 	"laundry/tools/sqlnull"
 )
@@ -27,6 +28,7 @@ type ServiceItems struct {
 }
 
 type ServicesCommonResponse struct {
-	Services  []Service         `json:"services"`
-	ItemTypes []items.ItemTypes `json:"item_types"`
+	Services         []Service                          `json:"services"`
+	ItemTypes        []items.ItemTypes                  `json:"item_types"`
+	FulfillmentTypes []fulfillmenttypes.FulfillmentType `json:"fulfillment_types"`
 }

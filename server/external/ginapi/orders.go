@@ -98,5 +98,5 @@ func (e *OrdersExternal) GetTemporaryOrder(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, createId)
+	c.JSON(http.StatusOK, gin.H{"id": createId})
 }

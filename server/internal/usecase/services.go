@@ -31,20 +31,26 @@ func (u *ServicesUsecase) FindAllServices() (services.ServicesCommonResponse, er
 
 			servicesList, err := u.repo.Services.FindAllServices(tx)
 			if err != nil {
-				return data, err
+				return
 			}
 
 			itemTypes, err := u.repo.Items.FindAllItemTypes(tx)
 			if err != nil {
-				return data, err
+				return
+			}
+
+			fulfillmentTypes, err := u.repo.FulfillmentTypes.FindAllFulfillmentTypes(tx)
+			if err != nil {
+				return
 			}
 
 			data = services.ServicesCommonResponse{
-				Services:  servicesList,
-				ItemTypes: itemTypes,
+				Services:         servicesList,
+				ItemTypes:        itemTypes,
+				FulfillmentTypes: fulfillmentTypes,
 			}
 
-			return data, nil
+			return
 		},
 		"Ошибка при получении услуг",
 	)
