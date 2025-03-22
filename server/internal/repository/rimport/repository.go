@@ -7,4 +7,5 @@ type RepositoryImport struct {
 	FulfillmentTypes repository.FulfillmentTypes
 	PriceModifiers   repository.PriceModifiers
 	Items            repository.Items
+	Orders           repository.Orders
 }

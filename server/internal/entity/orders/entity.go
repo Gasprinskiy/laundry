@@ -5,6 +5,7 @@ import (
 	pricemodifiers "laundry/internal/entity/price-modifiers"
 	"laundry/internal/entity/services"
 	"laundry/tools/sqlnull"
+	"time"
 )
 
 type CalculateOrderItem struct {
@@ -62,11 +63,44 @@ type CalculateOrderResponse struct {
 	Final         float64                                  `json:"final"`
 }
 
+type CreateOrderParam struct {
+	UserName    string `json:"user_name"`
+	PhoneNumber string `json:"phone_number"`
+}
+
+type CreateOrderDbParam struct {
+	UserName     string    `db:"user_name"`
+	PhoneNumber  string    `db:"phone_number"`
+	CreationDate time.Time `db:"creation_date"`
+	Total        float64   `db:"total"`
+	Final        float64   `db:"final"`
+}
+
+type CreateOrderServiceItemRecord struct {
+	ServiceItemID  int     `db:"service_item_id"`
+	Quantity       float64 `db:"quantity"`
+	Price          float64 `db:"price"`
+	OrderServiceId int     `db:"order_service_id"`
+}
+
+type CreateOrderPriceModifiersRecord struct {
+	Modifier    int               `db:"modifier_type_id"`
+	Description string            `db:"description"`
+	Percent     float64           `db:"percent"`
+	OrderID     sqlnull.NullInt64 `db:"order_id"`
+	ServiceID   sqlnull.NullInt64 `db:"service_id"`
+}
+
+type CreateOrderParamWithPreCalculatedData struct {
+	UserParam         CreateOrderDbParam
+	PreCalculatedData CalculateOrderResponse
+}
+
 type CalculateSingleServiceParam struct {
-	OrderedServices    CalculateOrderService
-	AbleItems          map[string]services.ServiceItems
-	AbleUnitModifiers  map[int]pricemodifiers.UnitPriceModifier
-	AblePriceModifiers map[int]pricemodifiers.PriceModifier
+	OrderedServices       CalculateOrderService
+	AbleItems             map[string]services.ServiceItems
+	AbleUnitModifiers     map[int]pricemodifiers.UnitPriceModifier
+	AbleItemTypeModifiers map[int]pricemodifiers.PriceModifier
 }
 
 type CalculateSingleServiceItemReduceResult struct {

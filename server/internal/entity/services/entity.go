@@ -2,6 +2,7 @@ package services
 
 import (
 	"laundry/internal/entity/items"
+	"laundry/tools/sqlnull"
 )
 
 type SubService struct {
@@ -17,11 +18,12 @@ type Service struct {
 }
 
 type ServiceItems struct {
-	ID        int     `json:"id" db:"id"`
-	ItemID    int     `json:"item_id" db:"item_id"`
-	ItemName  string  `json:"item_name" db:"item_name"`
-	Price     float64 `json:"-" db:"price"`
-	ServiceID int     `json:"-" db:"service_id"`
+	ID           int               `json:"id" db:"id"`
+	ItemID       int               `json:"item_id" db:"item_id"`
+	ItemName     string            `json:"item_name" db:"item_name"`
+	Price        float64           `json:"-" db:"price"`
+	ServiceID    sqlnull.NullInt64 `json:"-" db:"service_id"`
+	SubServiceID sqlnull.NullInt64 `json:"-" db:"sub_service_id"`
 }
 
 type ServicesCommonResponse struct {

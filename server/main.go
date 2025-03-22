@@ -1,15 +1,18 @@
 package main
 
 import (
+	"context"
 	"laundry/config"
 	external "laundry/external/ginapi"
 	"laundry/internal/repository/rimport"
 	"laundry/internal/usecase"
+	"laundry/redisclient"
 	"log"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
+	"github.com/redis/go-redis/v9"
 )
 
 func main() {
@@ -21,27 +24,35 @@ func main() {
 	if err != nil {
 		log.Panic("Ошибка при подключении к базе данных: ", err)
 	}
-	// Закрыть соеденение к базе перед выходом из функции main
-	defer db.Close()
-
 	if err := db.Ping(); err != nil {
 		log.Panic("Ошибка при пинге базы данных: ", err)
 	}
 
-	// rdb := redis.NewClient(&redis.Options{
-	// 	Addr:     conf.RedisPort,
-	// 	Password: conf.RedisPass,
-	// 	DB:       0,
-	// })
+	// Закрыть соеденение к базе перед выходом из функции main
+	defer db.Close()
+
+	// Подлключение к redis
+	rdb := redis.NewClient(&redis.Options{
+		Addr:     conf.RedisPort,
+		Password: conf.RedisPass,
+		DB:       0,
+	})
+	if _, err := rdb.Ping(context.Background()).Result(); err != nil {
+		log.Panic("Ошибка при подключении пинге redis: ", err)
+	}
+
+	// Закрыть соеденение к базе перед выходом из функции main
+	defer rdb.Close()
 
 	r := gin.Default()
 
+	redisCleint := redisclient.NewRedisClient(rdb, conf)
 	repo := rimport.NewRepositoryImports()
 	servicesUsecase := usecase.NewServicesUsecase(repo, db)
 	ordersUsecase := usecase.NewOrdersUsecase(repo, db)
 
 	external.RegiserServicesExternal(servicesUsecase, r)
-	external.RegiserOrdersExternal(ordersUsecase, r)
+	external.RegiserOrdersExternal(ordersUsecase, redisCleint, r)
 
 	r.Run(conf.Port)
 }

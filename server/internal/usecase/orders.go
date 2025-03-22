@@ -40,46 +40,63 @@ func (u *OrdersUsecase) CalculateOrder(param orders.CalculateOrderParam) (orders
 				return
 			}
 
-			subServiceItems, err := u.repo.Services.FindAllSubServiceItems(tx)
-			if err != nil {
-				return
-			}
-
 			unitModifiers, err := u.repo.PriceModifiers.FindAllUnitModifiers(tx)
 			if err != nil {
 				return
 			}
 
-			priceModifiers, err := u.repo.PriceModifiers.FindAllItemTypeModifiers(tx)
+			itemTypeModifiers, err := u.repo.PriceModifiers.FindAllItemTypeModifiers(tx)
 			if err != nil {
 				return
 			}
 
-			ableItems := make(map[string]services.ServiceItems)
-			ableUnitModifiers := make(map[int]pricemodifiers.UnitPriceModifier)
-			ablePriceModifiers := make(map[int]pricemodifiers.PriceModifier)
-
-			for _, item := range append(serviceItems, subServiceItems...) {
-				key := fmt.Sprintf("%d:%d", item.ServiceID, item.ID)
-				ableItems[key] = item
-			}
-
-			for _, unitM := range unitModifiers {
-				ableUnitModifiers[unitM.UnitID] = unitM
-			}
-
-			for _, priceM := range priceModifiers {
-				ablePriceModifiers[priceM.ID] = priceM
-			}
+			ableItems := slice.Reduce(
+				serviceItems,
+				func(
+					acc map[string]services.ServiceItems,
+					item services.ServiceItems,
+					index int,
+				) map[string]services.ServiceItems {
+					key := fmt.Sprintf("%d:%d:%d", item.ServiceID.GetInt(), item.ID, item.SubServiceID.GetInt())
+					acc[key] = item
+					return acc
+				},
+				make(map[string]services.ServiceItems, len(serviceItems)),
+			)
+			fmt.Println("ableItems: ", ableItems)
+			ableUnitModifiers := slice.Reduce(
+				unitModifiers,
+				func(
+					acc map[int]pricemodifiers.UnitPriceModifier,
+					unitM pricemodifiers.UnitPriceModifier,
+					index int,
+				) map[int]pricemodifiers.UnitPriceModifier {
+					acc[unitM.UnitID] = unitM
+					return acc
+				},
+				make(map[int]pricemodifiers.UnitPriceModifier, len(unitModifiers)),
+			)
+			ableItemTypeModifiers := slice.Reduce(
+				itemTypeModifiers,
+				func(
+					acc map[int]pricemodifiers.PriceModifier,
+					itemTypeM pricemodifiers.PriceModifier,
+					index int,
+				) map[int]pricemodifiers.PriceModifier {
+					acc[itemTypeM.ID] = itemTypeM
+					return acc
+				},
+				make(map[int]pricemodifiers.PriceModifier, len(itemTypeModifiers)),
+			)
 
 			var calculatedServices []orders.CalculateOrderResponseService
 
 			for _, service := range param.Services {
 				processed := u.calculateSingleService(orders.CalculateSingleServiceParam{
-					OrderedServices:    service,
-					AbleItems:          ableItems,
-					AbleUnitModifiers:  ableUnitModifiers,
-					AblePriceModifiers: ablePriceModifiers,
+					OrderedServices:       service,
+					AbleItems:             ableItems,
+					AbleUnitModifiers:     ableUnitModifiers,
+					AbleItemTypeModifiers: ableItemTypeModifiers,
 				})
 
 				calculatedServices = append(calculatedServices, processed)
@@ -150,23 +167,52 @@ func (u *OrdersUsecase) CalculateOrder(param orders.CalculateOrderParam) (orders
 		},
 		"Не удалось обработать заказ",
 	)
+}
 
+func (u *OrdersUsecase) CreateOrder(param orders.CreateOrderParamWithPreCalculatedData) (int, error) {
+	return transactiongeneric.HandleMethodWithTransaction(
+		u.db,
+		func(tx *sqlx.Tx) (orderID int, err error) {
+			orderID, err = u.repo.Orders.CreateOrder(tx, param.UserParam)
+			if err != nil {
+				return
+			}
+
+			fmt.Println("orderID: ", orderID)
+
+			for _, service := range param.PreCalculatedData.OrderServices {
+				err = u.processCreateOrderService(tx, orderID, service)
+				if err != nil {
+					return
+				}
+			}
+
+			for _, modifier := range append(param.PreCalculatedData.Discounts, param.PreCalculatedData.Markups...) {
+				err = u.repo.Orders.CreateOrderPriceModifiersRecord(tx, orders.CreateOrderPriceModifiersRecord{
+					Modifier:    modifier.Modifier,
+					Description: modifier.Description,
+					Percent:     modifier.Percent,
+					OrderID:     sqlnull.NewInt64(orderID),
+				})
+
+				if err != nil {
+					return
+				}
+			}
+
+			return
+		},
+		"Не удалось создать заказ",
+	)
 }
 
 func (u *OrdersUsecase) calculateSingleService(param orders.CalculateSingleServiceParam) orders.CalculateOrderResponseService {
-	var serviceID int
-
-	if param.OrderedServices.SubServiceID.Valid {
-		serviceID = param.OrderedServices.SubServiceID.GetInt()
-	} else {
-		serviceID = param.OrderedServices.ServiceID
-	}
-
 	chosenItems := []orders.ServiceCommonResponseItem{}
 
 	for _, chosenItem := range param.OrderedServices.Items {
-		key := fmt.Sprintf("%d:%d", serviceID, chosenItem.ID)
+		key := fmt.Sprintf("%d:%d:%d", param.OrderedServices.ServiceID, chosenItem.ID, param.OrderedServices.SubServiceID.GetInt())
 		ableItem := param.AbleItems[key]
+		fmt.Println("ableItem: ", ableItem)
 		chosenItems = append(chosenItems, orders.ServiceCommonResponseItem{
 			ID:          ableItem.ID,
 			ItemID:      ableItem.ItemID,
@@ -179,7 +225,7 @@ func (u *OrdersUsecase) calculateSingleService(param orders.CalculateSingleServi
 
 	var commonModifiers []pricemodifiers.PriceModifierCommonData
 
-	priceModifier, exists := param.AblePriceModifiers[param.OrderedServices.ItemsTypeID]
+	priceModifier, exists := param.AbleItemTypeModifiers[param.OrderedServices.ItemsTypeID]
 
 	if exists {
 		commonModifiers = append(commonModifiers, pricemodifiers.PriceModifierCommonData{
@@ -256,6 +302,48 @@ func (u *OrdersUsecase) calculateSingleService(param orders.CalculateSingleServi
 		UnitModifierID: sqlnull.NewInt64(unitPriceModifierID),
 		ItemsTypeID:    param.OrderedServices.ItemsTypeID,
 	}
+}
+
+func (u *OrdersUsecase) processCreateOrderService(
+	tx *sqlx.Tx,
+	orderID int,
+	param orders.CalculateOrderResponseService,
+) error {
+	id, err := u.repo.Orders.CreateOrderServiceRecord(tx, orderID, param.ServiceID)
+	if err != nil {
+		return err
+	}
+	var test int
+
+	fmt.Println("test: ", test)
+
+	for _, item := range param.Items {
+		err = u.repo.Orders.CreateOrderServiceItemRecord(tx, orders.CreateOrderServiceItemRecord{
+			ServiceItemID:  item.ID,
+			Quantity:       item.Quantity,
+			Price:          item.PriceForOne,
+			OrderServiceId: id,
+		})
+
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, modifier := range append(param.Discounts, param.Markups...) {
+		err = u.repo.Orders.CreateOrderPriceModifiersRecord(tx, orders.CreateOrderPriceModifiersRecord{
+			Modifier:    modifier.Modifier,
+			Description: modifier.Description,
+			Percent:     modifier.Percent,
+			ServiceID:   sqlnull.NewInt64(id),
+		})
+
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (u *OrdersUsecase) countMarkupsAndDiscounts(
