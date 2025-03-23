@@ -7,6 +7,7 @@ import (
 	"laundry/internal/entity/services"
 	"laundry/internal/entity/units"
 	"laundry/internal/repository/rimport"
+	"laundry/tools/appdate"
 	"laundry/tools/appmath"
 	"laundry/tools/slice"
 	"laundry/tools/sqlnull"
@@ -206,6 +207,21 @@ func (u *OrdersUsecase) CreateOrder(param orders.CreateOrderParamWithPreCalculat
 			return
 		},
 		"Не удалось создать заказ",
+	)
+}
+
+func (u *OrdersUsecase) FindTodayOrders() ([]orders.Order, error) {
+	return transactiongeneric.HandleMethodWithTransaction(
+		u.db,
+		func(tx *sqlx.Tx) ([]orders.Order, error) {
+			param := orders.GetOrderByDateRangeParam{
+				StartDate: appdate.GetStartOfDay(),
+				EndDate:   appdate.GetEndOfDay(),
+			}
+
+			return u.repo.Orders.FindOrdersByDateRange(tx, param)
+		},
+		"Не удалось найти заказы за сегодня",
 	)
 }
 

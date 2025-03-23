@@ -37,4 +37,5 @@ type Orders interface {
 	CreateOrderPriceModifiersRecord(tx *sqlx.Tx, param orders.CreateOrderPriceModifiersRecord) error
 	CreateOrderServiceRecord(tx *sqlx.Tx, orderID int, serviceID int) (id int, err error)
 	CreateOrderServiceItemRecord(tx *sqlx.Tx, param orders.CreateOrderServiceItemRecord) error
+	FindOrdersByDateRange(tx *sqlx.Tx, param orders.GetOrderByDateRangeParam) (data []orders.Order, err error)
 }

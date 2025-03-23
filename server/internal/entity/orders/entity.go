@@ -8,6 +8,19 @@ import (
 	"time"
 )
 
+type Order struct {
+	ID          int     `json:"id" db:"id"`
+	UserName    string  `json:"user_name" db:"user_name"`
+	PhoneNumber string  `json:"phone_number" db:"phone_number"`
+	Total       float64 `json:"total" db:"total"`
+	Final       float64 `json:"final" db:"final"`
+}
+
+type GetOrderByDateRangeParam struct {
+	StartDate time.Time
+	EndDate   time.Time
+}
+
 type CalculateOrderItem struct {
 	ID       int     `json:"id"`
 	Quantity float64 `json:"quantity"`

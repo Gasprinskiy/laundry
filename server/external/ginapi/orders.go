@@ -2,6 +2,7 @@ package external
 
 import (
 	"encoding/json"
+	"fmt"
 	"laundry/internal/entity/global"
 	"laundry/internal/entity/orders"
 	"laundry/internal/usecase"
@@ -34,6 +35,7 @@ func RegiserOrdersExternal(
 	{
 		group.POST("/calculate", ext.Calculate)
 		group.POST("/create/:id", ext.CreateOrder)
+		group.GET("/today", ext.GetTodayOrders)
 	}
 }
 
@@ -106,4 +108,15 @@ func (e *OrdersExternal) CreateOrder(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"id": createId})
+}
+
+func (e *OrdersExternal) GetTodayOrders(c *gin.Context) {
+	data, err := e.ordersUsecase.FindTodayOrders()
+	fmt.Println("data: ", data)
+	if err != nil {
+		c.JSON(global.ErrStatusCodes[err], gin.H{"message": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, data)
 }

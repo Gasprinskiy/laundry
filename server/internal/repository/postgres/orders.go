@@ -70,3 +70,20 @@ func (r *ordersRepository) CreateOrderServiceItemRecord(tx *sqlx.Tx, param order
 
 	return err
 }
+
+func (r *ordersRepository) FindOrdersByDateRange(tx *sqlx.Tx, param orders.GetOrderByDateRangeParam) (data []orders.Order, err error) {
+	sqlQuery := `
+	SELECT 
+		o.id,
+		o.user_name,
+		o.phone_number,
+		o.total,
+		o.final
+	FROM public.orders o
+	WHERE o.creation_date >= $1
+		AND o.creation_date  <=  $2`
+
+	err = tx.Select(&data, sqlQuery, param.StartDate, param.EndDate)
+
+	return
+}
