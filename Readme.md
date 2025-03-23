@@ -25,6 +25,9 @@
 - **Сервер (API)**: `http://localhost:$API_PORT`
 - **Клиент (Nginx)**: `http://localhost:$NGINX_PORT`
 
+## .env
+Файл .env не добавлен в .gitignore для того что бы проверка работоспособности была удобнее
+
 
 # Архитектура сервера
 
