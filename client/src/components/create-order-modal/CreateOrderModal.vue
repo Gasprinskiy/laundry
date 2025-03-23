@@ -14,18 +14,18 @@ const emit = defineEmits<CreateOrderModalEmits>();
 
 const userParams = shallowReactive<CreateOrderParam>({
   user_name: '',
-  user_phone_number: '',
+  phone_number: '',
 });
 
 const rules = {
   user_name: { required, minLength: minLength(2) },
-  user_phone_number: { required, numeric, minLength: minLength(7) },
+  phone_number: { required, numeric, minLength: minLength(7) },
 };
 
 const validator = useVuelidate(rules, userParams);
 
 const userNameStatus = computed(() => valudationStatus(validator.value, 'user_name'));
-const userPhoneStatus = computed(() => valudationStatus(validator.value, 'user_phone_number'));
+const userPhoneStatus = computed(() => valudationStatus(validator.value, 'phone_number'));
 
 async function createOrder() {
   const valid = await validator.value.$validate();
@@ -37,7 +37,7 @@ async function createOrder() {
 
   validator.value.$reset();
   userParams.user_name = '';
-  userParams.user_phone_number = '';
+  userParams.phone_number = '';
 }
 </script>
 
@@ -54,7 +54,7 @@ async function createOrder() {
         :status="userNameStatus"
       />
       <NInput
-        v-model:value="userParams.user_phone_number"
+        v-model:value="userParams.phone_number"
         placeholder="Номер телефона"
         :status="userPhoneStatus"
       />

@@ -135,11 +135,11 @@ async function onOrderCreate(param: CreateOrderParam) {
 
   try {
     const created = await createOrder(caclResult.value.temporary_id, param);
-    
+
     message.info(`Заказ №${created.id} успешно создан`, {
       duration: 3000,
     });
-    caclResult.value = null
+    caclResult.value = null;
   } catch (e) {
     message.error('Не удалось создать заказ', {
       duration: 3000,
@@ -416,7 +416,7 @@ onBeforeMount(fetchCommonServiceItems);
                   <tbody>
                     <tr v-for="discount in caclResult.discounts" :key="discount.modifier_id">
                       <td>{{ discount.description }}</td>
-                      <td>{{ discount.percent }}%</td>
+                      <td>{{ discount.percent }}</td>
                     </tr>
                   </tbody>
                 </NTable>
@@ -438,7 +438,7 @@ onBeforeMount(fetchCommonServiceItems);
                   <tbody>
                     <tr v-for="markup in caclResult.markups" :key="markup.modifier_id">
                       <td>{{ markup.description }}</td>
-                      <td>{{ markup.percent }}%</td>
+                      <td>{{ markup.percent }}</td>
                     </tr>
                   </tbody>
                 </NTable>
@@ -448,7 +448,7 @@ onBeforeMount(fetchCommonServiceItems);
             <div class="home-view__result_tables">
               <h3>Общие сведения</h3>
 
-              <NTable style="width: 100%;">
+              <NTable>
                 <tbody>
                   <tr>
                     <td>Скорость выполнения</td>

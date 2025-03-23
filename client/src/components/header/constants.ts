@@ -4,7 +4,7 @@ export const RouteLinks = [
     label: 'Оформление заказа',
   },
   {
-    path: '/some',
+    path: '/today-orders',
     label: 'Заказы за сегодня',
   },
 ];

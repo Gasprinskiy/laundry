@@ -12,19 +12,20 @@ services:
       REDIS_PORT: $REDIS_PORT
       REDIS_TTL: $REDIS_TTL
       CLIENT_URL: $CLIENT_URL
+      CLEINT_DEV_URL: $CLEINT_DEV_URL
     ports:
       - "$API_PORT:$API_PORT"
 
-  client:
-    build: ./client
-    container_name: vue-client
-    environment:
-      API_PROXY_PATH: http://go_app:$API_PORT/
-      NGINX_PORT: $NGINX_PORT
-    depends_on:
-      - server
-    ports:
-      - "$NGINX_PORT:$NGINX_PORT"
+  # client:
+  #   build: ./client
+  #   container_name: vue-client
+  #   environment:
+  #     API_PROXY_PATH: http://go_app:$API_PORT/
+  #     NGINX_PORT: $NGINX_PORT
+  #   depends_on:
+  #     - server
+  #   ports:
+  #     - "$NGINX_PORT:$NGINX_PORT"
 
   db:
     image: postgres:15-alpine

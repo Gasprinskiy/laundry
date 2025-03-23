@@ -1,0 +1,33 @@
+.today-orders-view {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+
+  &__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  &__reduced {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-right: 10px;
+
+    &-item {
+      font-size: 16px;
+      display: flex;
+      justify-content: space-between;
+      gap: 15px;
+
+      .text {
+        font-weight: 500;
+      }
+
+      .value {
+        color: rgb(24, 160, 88);
+      }
+    }
+  }
+}

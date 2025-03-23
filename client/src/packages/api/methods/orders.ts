@@ -1,4 +1,4 @@
-import type { CalculateOrderParam, CalculateOrderResponse, CreateOrderParam, CreateResponse } from '../types/orders';
+import type { CalculateOrderParam, CalculateOrderResponse, CreateOrderParam, CreateResponse, Order } from '../types/orders';
 import $api from '../worker';
 
 export function calculateOrder(param: CalculateOrderParam): Promise<CalculateOrderResponse> {
@@ -12,5 +12,11 @@ export function createOrder(id: string, param: CreateOrderParam): Promise<Create
   return $api(`/orders/create/${id}`, {
     method: 'POST',
     body: param,
+  });
+};
+
+export function getTodayOrders(): Promise<Order[]> {
+  return $api('/orders/today', {
+    method: 'GET',
   });
 };

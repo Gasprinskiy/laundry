@@ -3,6 +3,14 @@ import type { ItemTypeId } from './items';
 import type { PriceModifierCommonData } from './price-modifiers';
 import type { UnitType } from './unit-type';
 
+export interface Order {
+  id: number;
+  user_name: string;
+  phone_number: string;
+  total: number;
+  final: number;
+}
+
 export interface CalculateOrderItem {
   id: number;
   quantity: number;
@@ -69,9 +77,9 @@ export interface CalculateOrderResponse {
 
 export interface CreateOrderParam {
   user_name: string;
-  user_phone_number: string;
+  phone_number: string;
 }
 
 export interface CreateResponse {
-  id: number
+  id: number;
 }
