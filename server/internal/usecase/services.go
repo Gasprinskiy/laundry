@@ -23,7 +23,7 @@ func NewServicesUsecase(
 	}
 }
 
-// FindAllServices собирает все доступные услуги и типы одежды
+// FindAllServices собирает все доступные услуги, типы одежды и доступные скорости выполнения
 func (u *ServicesUsecase) FindAllServices() (services.ServicesCommonResponse, error) {
 	return transactiongeneric.HandleMethodWithTransaction(
 		u.db,

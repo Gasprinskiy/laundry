@@ -32,25 +32,29 @@ func NewOrdersUsecase(
 	}
 }
 
+// CalculateOrder расчитывает цену заказа с учетом цен за вещи в каждой услуге,
+// применяет скидки если условия скидок были выполнены
 func (u *OrdersUsecase) CalculateOrder(param orders.CalculateOrderParam) (orders.CalculateOrderResponse, error) {
 	return transactiongeneric.HandleMethodWithTransaction(
 		u.db,
 		func(tx *sqlx.Tx) (res orders.CalculateOrderResponse, err error) {
+			// получение всех доступных вещей с их ценами
 			serviceItems, err := u.repo.Services.FindAllServiceItems(tx)
 			if err != nil {
 				return
 			}
-
+			// получение модификаторов цен единиц измерения (шт, кг)
 			unitModifiers, err := u.repo.PriceModifiers.FindAllUnitModifiers(tx)
 			if err != nil {
 				return
 			}
-
+			// получение модификаторов цен типа вещей (врослые, детские)
 			itemTypeModifiers, err := u.repo.PriceModifiers.FindAllItemTypeModifiers(tx)
 			if err != nil {
 				return
 			}
 
+			// превращение данных в map для последующей работы с ними
 			ableItems := slice.Reduce(
 				serviceItems,
 				func(
@@ -97,6 +101,7 @@ func (u *OrdersUsecase) CalculateOrder(param orders.CalculateOrderParam) (orders
 
 			var calculatedServices []orders.CalculateOrderResponseService
 
+			// обработка каждой услуги заказа
 			for _, service := range param.Services {
 				processed := u.calculateSingleService(orders.CalculateSingleServiceParam{
 					OrderedServices:       service,
@@ -108,6 +113,7 @@ func (u *OrdersUsecase) CalculateOrder(param orders.CalculateOrderParam) (orders
 				calculatedServices = append(calculatedServices, processed)
 			}
 
+			// расчет общей суммы всех услуг со скидкой и без
 			reduce := slice.Reduce(
 				calculatedServices,
 				func(
@@ -127,6 +133,7 @@ func (u *OrdersUsecase) CalculateOrder(param orders.CalculateOrderParam) (orders
 
 			final := reduce.Final
 
+			// применения общих скидок к заказу
 			var fulfillmentPriceModifier pricemodifiers.PriceModifier
 			var discounts []pricemodifiers.PriceModifierCommonData
 			var markups []pricemodifiers.PriceModifierCommonData
@@ -175,15 +182,18 @@ func (u *OrdersUsecase) CalculateOrder(param orders.CalculateOrderParam) (orders
 	)
 }
 
+// CreateOrder создает заказ
 func (u *OrdersUsecase) CreateOrder(param orders.CreateOrderParamWithPreCalculatedData) (int, error) {
 	return transactiongeneric.HandleMethodWithTransaction(
 		u.db,
 		func(tx *sqlx.Tx) (orderID int, err error) {
+			// создание заказа в таблице заказов
 			orderID, err = u.repo.Orders.CreateOrder(tx, param.UserParam)
 			if err != nil {
 				return
 			}
 
+			// запись услуг заказа
 			for _, service := range param.PreCalculatedData.OrderServices {
 				err = u.processCreateOrderService(tx, orderID, service)
 				if err != nil {
@@ -191,6 +201,7 @@ func (u *OrdersUsecase) CreateOrder(param orders.CreateOrderParamWithPreCalculat
 				}
 			}
 
+			// запись примененных к заказу модификаторов цены
 			for _, modifier := range append(param.PreCalculatedData.Discounts, param.PreCalculatedData.Markups...) {
 				err = u.repo.Orders.CreateOrderPriceModifiersRecord(tx, orders.CreateOrderPriceModifiersRecord{
 					Modifier:    modifier.Modifier,
@@ -210,6 +221,7 @@ func (u *OrdersUsecase) CreateOrder(param orders.CreateOrderParamWithPreCalculat
 	)
 }
 
+// FindTodayOrders полученение заказов за сегодня
 func (u *OrdersUsecase) FindTodayOrders() ([]orders.Order, error) {
 	return transactiongeneric.HandleMethodWithTransaction(
 		u.db,
@@ -225,14 +237,17 @@ func (u *OrdersUsecase) FindTodayOrders() ([]orders.Order, error) {
 	)
 }
 
+// calculateSingleService обработка услуги и применение скидок
 func (u *OrdersUsecase) calculateSingleService(param orders.CalculateSingleServiceParam) orders.CalculateOrderResponseService {
 	chosenItems := []orders.ServiceCommonResponseItem{}
 
+	// если подуслуга то используется id подуслуги
 	serviceID := param.OrderedServices.ServiceID
 	if param.OrderedServices.SubServiceID.Valid {
 		serviceID = param.OrderedServices.SubServiceID.GetInt()
 	}
 
+	// получение выбранных вещей из доступных
 	for _, chosenItem := range param.OrderedServices.Items {
 		key := fmt.Sprintf("%d:%d", serviceID, chosenItem.ID)
 		ableItem := param.AbleItems[key]
@@ -248,6 +263,7 @@ func (u *OrdersUsecase) calculateSingleService(param orders.CalculateSingleServi
 
 	var commonModifiers []pricemodifiers.PriceModifierCommonData
 
+	// получение модификаторов цен типа вещей (врослые, детские)
 	priceModifier, exists := param.AbleItemTypeModifiers[param.OrderedServices.ItemsTypeID]
 
 	if exists {
@@ -259,6 +275,7 @@ func (u *OrdersUsecase) calculateSingleService(param orders.CalculateSingleServi
 		})
 	}
 
+	// получение модификаторов цен единиц измерения (шт, кг)
 	var unitPriceModifierID int
 	unitPriceModifier, exists := param.AbleUnitModifiers[param.OrderedServices.UnitID]
 
@@ -292,6 +309,7 @@ func (u *OrdersUsecase) calculateSingleService(param orders.CalculateSingleServi
 	var discounts []pricemodifiers.PriceModifierCommonData
 	var markups []pricemodifiers.PriceModifierCommonData
 
+	// применение модификаторов цен
 	final := reduced.TotalSum
 	for _, modifer := range commonModifiers {
 		result, isDiscount := u.countMarkupsAndDiscounts(
@@ -326,19 +344,19 @@ func (u *OrdersUsecase) calculateSingleService(param orders.CalculateSingleServi
 	}
 }
 
+// processCreateOrderService записывает услуги и вещи у созданного заказа
 func (u *OrdersUsecase) processCreateOrderService(
 	tx *sqlx.Tx,
 	orderID int,
 	param orders.CalculateOrderResponseService,
 ) error {
+	// запись услуги
 	id, err := u.repo.Orders.CreateOrderServiceRecord(tx, orderID, param.ServiceID)
 	if err != nil {
 		return err
 	}
-	var test int
 
-	fmt.Println("test: ", test)
-
+	// запись вещей
 	for _, item := range param.Items {
 		err = u.repo.Orders.CreateOrderServiceItemRecord(tx, orders.CreateOrderServiceItemRecord{
 			ServiceItemID:  item.ID,
@@ -352,6 +370,7 @@ func (u *OrdersUsecase) processCreateOrderService(
 		}
 	}
 
+	// запись модификаторов цены у услуги
 	for _, modifier := range append(param.Discounts, param.Markups...) {
 		err = u.repo.Orders.CreateOrderPriceModifiersRecord(tx, orders.CreateOrderPriceModifiersRecord{
 			Modifier:    modifier.Modifier,
@@ -368,6 +387,7 @@ func (u *OrdersUsecase) processCreateOrderService(
 	return nil
 }
 
+// countMarkupsAndDiscounts получает модификтор и процент, высчитывает или добавляет процент к сумме
 func (u *OrdersUsecase) countMarkupsAndDiscounts(
 	modifier int,
 	percent float64,

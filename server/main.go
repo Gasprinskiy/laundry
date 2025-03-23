@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"laundry/config"
 	external "laundry/external/ginapi"
 	"laundry/internal/repository/rimport"
@@ -48,8 +47,6 @@ func main() {
 
 	r := gin.Default()
 
-	fmt.Println("conf.ClientUrl, conf.ClinetDevUrl: ", conf.ClientUrl, conf.ClinetDevUrl)
-
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{conf.ClientUrl, conf.ClinetDevUrl},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
@@ -58,11 +55,13 @@ func main() {
 		AllowCredentials: true,
 	}))
 
+	// создание экземпляров внутреннего слоя приложения
 	redisCleint := redisclient.NewRedisClient(rdb, conf)
 	repo := rimport.NewRepositoryImports()
 	servicesUsecase := usecase.NewServicesUsecase(repo, db)
 	ordersUsecase := usecase.NewOrdersUsecase(repo, db)
 
+	// регистрация путей API
 	external.RegiserServicesExternal(servicesUsecase, r)
 	external.RegiserOrdersExternal(ordersUsecase, redisCleint, r)
 

@@ -39,6 +39,8 @@ func RegiserOrdersExternal(
 	}
 }
 
+// Calculate Метод принимает JSON с параметрами расчета заказа, выполняет расчет через ordersUsecase.CalculateOrder,
+// сериализует результат и сохраняет его в Redis. Затем отправляет рассчитанные данные клиенту.
 func (e *OrdersExternal) Calculate(c *gin.Context) {
 	param := orders.CalculateOrderParam{}
 
@@ -68,6 +70,9 @@ func (e *OrdersExternal) Calculate(c *gin.Context) {
 	c.JSON(http.StatusOK, data)
 }
 
+// CreateOrder Метод получает ID предварительно рассчитанного заказа, извлекает данные из Redis,
+// принимает пользовательские данные из JSON, объединяет их с расчетными данными и создает заказ через ordersUsecase.CreateOrder.
+// Возвращает ID созданного заказа.
 func (e *OrdersExternal) CreateOrder(c *gin.Context) {
 	id := c.Param("id")
 
@@ -110,6 +115,7 @@ func (e *OrdersExternal) CreateOrder(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"id": createId})
 }
 
+// GetTodayOrders Метод запрашивает заказы, оформленные сегодня, через ordersUsecase.FindTodayOrders и отправляет их клиенту.
 func (e *OrdersExternal) GetTodayOrders(c *gin.Context) {
 	data, err := e.ordersUsecase.FindTodayOrders()
 	fmt.Println("data: ", data)
