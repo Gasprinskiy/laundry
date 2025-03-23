@@ -25,39 +25,6 @@
 - **Сервер (API)**: `http://localhost:$API_PORT`
 - **Клиент (Nginx)**: `http://localhost:$NGINX_PORT`
 
-```
-
-
-# Проект с использованием Docker Compose
-
-## Описание
-Этот проект состоит из нескольких сервисов, работающих в Docker:
-- **db** (PostgreSQL) — база данных
-- **redis** — кэш
-- **server** (Go-приложение) — серверная часть
-- **client** (Vue-приложение с Nginx) — клиентская часть
-
-## Запуск проекта
-
-1. Создай `.env` файл с нужными переменными окружения:
-   ```sh
-   POSTGRES_USER=your_user
-   POSTGRES_PASSWORD=your_password
-   POSTGRES_DB=your_database
-   DB_PORT=5432
-   REDIS_PASSWORD=your_redis_password
-   REDIS_PORT=6379
-   REDIS_TTL=3600
-   API_PORT=8080
-   NGINX_PORT=80
-   CLIENT_URL=http://localhost
-   CLEINT_DEV_URL=http://localhost:3000
-   ```
-
-2. Запусти проект:
-   ```sh
-   ./start_docker.sh
-   ```
 
 ## Архитектура сервера
 
