@@ -61,7 +61,10 @@ func (u *ServicesUsecase) FindServiceItemsByID(id int, isSub bool) ([]services.S
 	return transactiongeneric.HandleMethodWithTransaction(
 		u.db,
 		func(tx *sqlx.Tx) ([]services.ServiceItems, error) {
-			return u.repo.Services.FindServiceItemsByID(tx, id, isSub)
+			if isSub {
+				return u.repo.Services.FindServiceSubServiceItemsByID(tx, id)
+			}
+			return u.repo.Services.FindServiceItemsByID(tx, id)
 		},
 		"Ошибка при получении списка доступной одежды в услуге",
 	)

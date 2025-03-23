@@ -57,13 +57,17 @@ func (u *OrdersUsecase) CalculateOrder(param orders.CalculateOrderParam) (orders
 					item services.ServiceItems,
 					index int,
 				) map[string]services.ServiceItems {
-					key := fmt.Sprintf("%d:%d:%d", item.ServiceID.GetInt(), item.ID, item.SubServiceID.GetInt())
+					serviceId := item.ServiceID.GetInt()
+					if item.SubServiceID.Valid {
+						serviceId = item.SubServiceID.GetInt()
+					}
+					key := fmt.Sprintf("%d:%d", serviceId, item.ID)
 					acc[key] = item
 					return acc
 				},
 				make(map[string]services.ServiceItems, len(serviceItems)),
 			)
-			fmt.Println("ableItems: ", ableItems)
+
 			ableUnitModifiers := slice.Reduce(
 				unitModifiers,
 				func(
@@ -76,6 +80,7 @@ func (u *OrdersUsecase) CalculateOrder(param orders.CalculateOrderParam) (orders
 				},
 				make(map[int]pricemodifiers.UnitPriceModifier, len(unitModifiers)),
 			)
+
 			ableItemTypeModifiers := slice.Reduce(
 				itemTypeModifiers,
 				func(
@@ -178,8 +183,6 @@ func (u *OrdersUsecase) CreateOrder(param orders.CreateOrderParamWithPreCalculat
 				return
 			}
 
-			fmt.Println("orderID: ", orderID)
-
 			for _, service := range param.PreCalculatedData.OrderServices {
 				err = u.processCreateOrderService(tx, orderID, service)
 				if err != nil {
@@ -209,10 +212,14 @@ func (u *OrdersUsecase) CreateOrder(param orders.CreateOrderParamWithPreCalculat
 func (u *OrdersUsecase) calculateSingleService(param orders.CalculateSingleServiceParam) orders.CalculateOrderResponseService {
 	chosenItems := []orders.ServiceCommonResponseItem{}
 
+	serviceID := param.OrderedServices.ServiceID
+	if param.OrderedServices.SubServiceID.Valid {
+		serviceID = param.OrderedServices.SubServiceID.GetInt()
+	}
+
 	for _, chosenItem := range param.OrderedServices.Items {
-		key := fmt.Sprintf("%d:%d:%d", param.OrderedServices.ServiceID, chosenItem.ID, param.OrderedServices.SubServiceID.GetInt())
+		key := fmt.Sprintf("%d:%d", serviceID, chosenItem.ID)
 		ableItem := param.AbleItems[key]
-		fmt.Println("ableItem: ", ableItem)
 		chosenItems = append(chosenItems, orders.ServiceCommonResponseItem{
 			ID:          ableItem.ID,
 			ItemID:      ableItem.ItemID,
@@ -237,7 +244,7 @@ func (u *OrdersUsecase) calculateSingleService(param orders.CalculateSingleServi
 	}
 
 	var unitPriceModifierID int
-	unitPriceModifier := param.AbleUnitModifiers[param.OrderedServices.UnitID]
+	unitPriceModifier, exists := param.AbleUnitModifiers[param.OrderedServices.UnitID]
 
 	reduced := slice.Reduce(
 		chosenItems,
@@ -256,7 +263,7 @@ func (u *OrdersUsecase) calculateSingleService(param orders.CalculateSingleServi
 		},
 	)
 
-	if reduced.TotalUnitQuantity > unitPriceModifier.UnitQuantity {
+	if reduced.TotalUnitQuantity > unitPriceModifier.UnitQuantity && exists {
 		commonModifiers = append(commonModifiers, pricemodifiers.PriceModifierCommonData{
 			Percent:     unitPriceModifier.Percent,
 			Description: unitPriceModifier.Description.String,
@@ -270,7 +277,6 @@ func (u *OrdersUsecase) calculateSingleService(param orders.CalculateSingleServi
 	var markups []pricemodifiers.PriceModifierCommonData
 
 	final := reduced.TotalSum
-
 	for _, modifer := range commonModifiers {
 		result, isDiscount := u.countMarkupsAndDiscounts(
 			modifer.Modifier,

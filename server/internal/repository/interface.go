@@ -12,7 +12,8 @@ import (
 
 type Services interface {
 	FindAllServices(tx *sqlx.Tx) (data []services.Service, err error)
-	FindServiceItemsByID(tx *sqlx.Tx, id int, isSub bool) (data []services.ServiceItems, err error)
+	FindServiceItemsByID(tx *sqlx.Tx, id int) (data []services.ServiceItems, err error)
+	FindServiceSubServiceItemsByID(tx *sqlx.Tx, id int) (data []services.ServiceItems, err error)
 	FindServiceSubServiceById(tx *sqlx.Tx, id int) (data []services.SubService, err error)
 	FindAllServiceItems(tx *sqlx.Tx) (data []services.ServiceItems, err error)
 }

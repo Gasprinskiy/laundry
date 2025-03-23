@@ -33,7 +33,7 @@ func RegiserOrdersExternal(
 	group := ext.gin.Group("/orders")
 	{
 		group.POST("/calculate", ext.Calculate)
-		group.GET("/temporary/:id", ext.GetTemporaryOrder)
+		group.POST("/create/:id", ext.CreateOrder)
 	}
 }
 
@@ -66,12 +66,19 @@ func (e *OrdersExternal) Calculate(c *gin.Context) {
 	c.JSON(http.StatusOK, data)
 }
 
-func (e *OrdersExternal) GetTemporaryOrder(c *gin.Context) {
+func (e *OrdersExternal) CreateOrder(c *gin.Context) {
 	id := c.Param("id")
 
 	data, err := e.redisClient.Get(id)
 	if err != nil {
 		c.JSON(global.ErrStatusCodes[err], gin.H{"message": err.Error()})
+		return
+	}
+
+	userParam := orders.CreateOrderParam{}
+
+	if err := c.BindJSON(&userParam); err != nil {
+		c.JSON(global.ErrStatusCodes[global.ErrInvalidParam], gin.H{"message": err.Error()})
 		return
 	}
 
@@ -85,8 +92,8 @@ func (e *OrdersExternal) GetTemporaryOrder(c *gin.Context) {
 
 	createId, err := e.ordersUsecase.CreateOrder(orders.CreateOrderParamWithPreCalculatedData{
 		UserParam: orders.CreateOrderDbParam{
-			UserName:     "Исмаил",
-			PhoneNumber:  "+998998152821",
+			UserName:     userParam.UserName,
+			PhoneNumber:  userParam.PhoneNumber,
 			CreationDate: time.Now(),
 			Total:        result.Total,
 			Final:        result.Final,

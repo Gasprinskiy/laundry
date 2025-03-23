@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"laundry/config"
 	external "laundry/external/ginapi"
 	"laundry/internal/repository/rimport"
@@ -47,10 +48,12 @@ func main() {
 
 	r := gin.Default()
 
+	fmt.Println("conf.ClientUrl, conf.ClinetDevUrl: ", conf.ClientUrl, conf.ClinetDevUrl)
+
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{conf.ClientUrl},
+		AllowOrigins:     []string{conf.ClientUrl, conf.ClinetDevUrl},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		AllowHeaders:     []string{"Origin", "Content-Type"},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
 	}))
