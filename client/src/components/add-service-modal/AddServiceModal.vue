@@ -2,7 +2,6 @@
 import { computed, ref, shallowRef } from 'vue';
 import { required } from '@vuelidate/validators';
 import useVuelidate from '@vuelidate/core';
-import type { Validation } from '@vuelidate/core';
 import type { FormValidationStatus } from 'naive-ui/es/form/src/interface';
 import { NSelect, NButton, NIcon, NInputNumber, NTag, useMessage } from 'naive-ui';
 import type { SelectMixedOption } from 'naive-ui/es/select/src/interface';
@@ -12,9 +11,10 @@ import type { ServiceItem, Service, ServiceSubService } from '@/packages/api/typ
 import { fetchServiceSubService, fetchServiceItems, fetchSubServiceItems } from '@/packages/api/methods/service';
 import { UnitType } from '@/packages/api/types/unit-type';
 import { UnitTypePointer, UnitTypeTitle } from '@/packages/api/constatns/unit-type';
+import type { ItemType } from '@/packages/api/types/items';
+import { valudationStatus } from '@/tools/validator';
 
 import type { AddServiceModalEmits, AddedItem, AddServiceModalProps } from './types';
-import type { ItemType } from '@/packages/api/types/items';
 
 const props = defineProps<AddServiceModalProps>();
 const emit = defineEmits<AddServiceModalEmits>();
@@ -225,13 +225,6 @@ async function addService(): Promise<void> {
     addedItems: addedItems.value,
     itemType,
   });
-}
-
-function valudationStatus<T extends Validation>(validator: T, key: keyof T): FormValidationStatus | undefined {
-  if (validator[key].$invalid && validator.$dirty) {
-    return 'error';
-  }
-  return undefined;
 }
 </script>
 

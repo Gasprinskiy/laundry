@@ -1,4 +1,7 @@
 .home-view {
+  display: flex;
+  gap: 25px;
+
   &__head {
     display: flex;
     justify-content: space-between;
@@ -27,10 +30,20 @@
   }
 
   &__right {
-    width: 75%;
+    width: 50%;
     display: flex;
     flex-direction: column;
     gap: 20px;
+
+    &-footer {
+      display: flex;
+      justify-content: end;
+      gap: 10px;
+
+      .n-select {
+        max-width: 200px;
+      }
+    }
   }
 
   &__service-card {
@@ -56,6 +69,61 @@
       &-tag .n-tag__content {
         display: flex;
         gap: 5px;
+      }
+    }
+  }
+
+  &__divider {
+    width: 1px;
+    height: calc(100vh - 92px);
+    background-color: rgb(239, 239, 245);
+  }
+
+  &__left {
+    width: calc(50% - 25px);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+
+    &-footer {
+      display: flex;
+      justify-content: end;
+    }
+  }
+
+  &__result {
+    width: 100%;
+    height: 70vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: 1px solid rgb(239, 239, 245);
+    border-radius: 3px;
+    position: relative;
+
+    &_scrollbar {
+      height: 100%;
+      padding: 16px;
+    }
+
+    &_data {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    &_tables {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    &-common-td {
+      text-align: center;
+
+      &.number-animation {
+        color: rgb(24, 160, 88);
+        font-size: 16px;
       }
     }
   }

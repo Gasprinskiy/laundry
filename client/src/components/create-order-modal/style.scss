@@ -1,0 +1,17 @@
+.create-order-modal {
+  width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+
+  &__body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  &__footer {
+    display: flex;
+    justify-content: end;
+  }
+}
