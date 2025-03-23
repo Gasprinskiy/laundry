@@ -1,32 +1,4 @@
 services:
-  server:
-    build: ./server
-    container_name: go_app
-    depends_on:
-      - db
-      - redis
-    environment:
-      DATABASE_URL: host=db user=$POSTGRES_USER password=$POSTGRES_PASSWORD dbname=$POSTGRES_DB port=$DB_PORT sslmode=disable
-      PORT: $API_PORT
-      REDIS_PASSWORD: $REDIS_PASSWORD
-      REDIS_PORT: $REDIS_PORT
-      REDIS_TTL: $REDIS_TTL
-      CLIENT_URL: $CLIENT_URL
-      CLEINT_DEV_URL: $CLEINT_DEV_URL
-    ports:
-      - "$API_PORT:$API_PORT"
-
-  # client:
-  #   build: ./client
-  #   container_name: vue-client
-  #   environment:
-  #     API_PROXY_PATH: http://go_app:$API_PORT/
-  #     NGINX_PORT: $NGINX_PORT
-  #   depends_on:
-  #     - server
-  #   ports:
-  #     - "$NGINX_PORT:$NGINX_PORT"
-
   db:
     image: postgres:15-alpine
     container_name: postgres_db
@@ -41,6 +13,12 @@ services:
       - ./pg/data:/data
     ports:
       - "$DB_PORT:$DB_PORT"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
 
   redis:
     image: redis:7.4-alpine
@@ -50,4 +28,38 @@ services:
       - ./redis_data:/data
     ports:
       - "$REDIS_PORT:$REDIS_PORT"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
+
+  server:
+    build: ./server
+    container_name: go_app
+    depends_on:
+      db:
+        condition: service_healthy
+        restart: true
+      redis:
+        condition: service_healthy
+        restart: true
+    environment:
+      DATABASE_URL: host=db user=$POSTGRES_USER password=$POSTGRES_PASSWORD dbname=$POSTGRES_DB port=$DB_PORT sslmode=disable
+      PORT: $API_PORT
+      REDIS_PASSWORD: $REDIS_PASSWORD
+      REDIS_PORT: $REDIS_PORT
+      REDIS_TTL: $REDIS_TTL
+      CLIENT_URL: $CLIENT_URL
+      CLEINT_DEV_URL: $CLEINT_DEV_URL
+    ports:
+      - "$API_PORT:$API_PORT"
+
+  client:
+    build: ./client
+    container_name: vue-client
+    environment:
+      API_PROXY_PATH: http://go_app:$API_PORT/
+      NGINX_PORT: $NGINX_PORT
+    depends_on:
+      - server
+    ports:
+      - "$NGINX_PORT:$NGINX_PORT"
 

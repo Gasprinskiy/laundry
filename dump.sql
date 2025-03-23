@@ -1,7 +1,12 @@
+--
+-- Name: fulfillment_types; Type: TABLE; Schema: public; Owner: pguser
+--
+
 CREATE TABLE public.fulfillment_types (
     id bigint NOT NULL,
-    price_modifier_id bigint,
-    name character varying(55) NOT NULL
+    modifier_id bigint,
+    name character varying(55) NOT NULL,
+    description character varying(155)
 );
 
 
@@ -27,8 +32,9 @@ ALTER TABLE public.fulfillment_types ALTER COLUMN id ADD GENERATED ALWAYS AS IDE
 
 CREATE TABLE public.item_types (
     id bigint NOT NULL,
-    type character varying(55) NOT NULL,
-    price_modifier_id bigint
+    name character varying(55) NOT NULL,
+    modifier_id bigint,
+    description character varying(155)
 );
 
 
@@ -66,6 +72,122 @@ ALTER TABLE public.items OWNER TO pguser;
 
 ALTER TABLE public.items ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
     SEQUENCE NAME public.items_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: order_price_modifiers; Type: TABLE; Schema: public; Owner: pguser
+--
+
+CREATE TABLE public.order_price_modifiers (
+    id bigint NOT NULL,
+    modifier_type_id bigint NOT NULL,
+    description character varying(255) NOT NULL,
+    percent double precision NOT NULL,
+    order_id bigint,
+    service_id bigint
+);
+
+
+ALTER TABLE public.order_price_modifiers OWNER TO pguser;
+
+--
+-- Name: order_price_modifiers_id_seq; Type: SEQUENCE; Schema: public; Owner: pguser
+--
+
+ALTER TABLE public.order_price_modifiers ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME public.order_price_modifiers_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: orders; Type: TABLE; Schema: public; Owner: pguser
+--
+
+CREATE TABLE public.orders (
+    id bigint NOT NULL,
+    user_name character varying(55) NOT NULL,
+    phone_number character varying(55) NOT NULL,
+    total double precision NOT NULL,
+    final double precision NOT NULL,
+    creation_date timestamp without time zone NOT NULL
+);
+
+
+ALTER TABLE public.orders OWNER TO pguser;
+
+--
+-- Name: orders_id_seq; Type: SEQUENCE; Schema: public; Owner: pguser
+--
+
+ALTER TABLE public.orders ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME public.orders_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: orders_service_items; Type: TABLE; Schema: public; Owner: pguser
+--
+
+CREATE TABLE public.orders_service_items (
+    id bigint NOT NULL,
+    service_item_id bigint NOT NULL,
+    quantity double precision NOT NULL,
+    price double precision NOT NULL,
+    order_service_id bigint NOT NULL
+);
+
+
+ALTER TABLE public.orders_service_items OWNER TO pguser;
+
+--
+-- Name: orders_service_items_id_seq; Type: SEQUENCE; Schema: public; Owner: pguser
+--
+
+ALTER TABLE public.orders_service_items ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME public.orders_service_items_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: orders_services; Type: TABLE; Schema: public; Owner: pguser
+--
+
+CREATE TABLE public.orders_services (
+    id bigint NOT NULL,
+    order_id bigint NOT NULL,
+    service_id bigint NOT NULL
+);
+
+
+ALTER TABLE public.orders_services OWNER TO pguser;
+
+--
+-- Name: orders_services_id_seq; Type: SEQUENCE; Schema: public; Owner: pguser
+--
+
+ALTER TABLE public.orders_services ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME public.orders_services_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -133,16 +255,18 @@ ALTER TABLE public.price_modifiers ALTER COLUMN id ADD GENERATED ALWAYS AS IDENT
 
 CREATE TABLE public.service_items (
     id bigint NOT NULL,
-    service_id bigint NOT NULL,
     item_id bigint NOT NULL,
-    service_unit_id bigint NOT NULL,
     price double precision NOT NULL,
+    service_id bigint,
     sub_service_id bigint
 );
 
 
 ALTER TABLE public.service_items OWNER TO pguser;
 
+--
+-- Name: service_items_seq; Type: SEQUENCE; Schema: public; Owner: pguser
+--
 
 ALTER TABLE public.service_items ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
     SEQUENCE NAME public.service_items_seq
@@ -152,6 +276,7 @@ ALTER TABLE public.service_items ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTIT
     NO MAXVALUE
     CACHE 1
 );
+
 
 --
 -- Name: unit; Type: TABLE; Schema: public; Owner: pguser
@@ -185,7 +310,8 @@ ALTER TABLE public.unit ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
 
 CREATE TABLE public.services (
     id bigint NOT NULL,
-    name character varying(255) NOT NULL
+    name character varying(255) NOT NULL,
+    unit_id bigint
 );
 
 
@@ -239,7 +365,9 @@ ALTER TABLE public.sub_services ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY
 CREATE TABLE public.unit_modifiers (
     id bigint NOT NULL,
     unit_id bigint NOT NULL,
-    modifier_id bigint NOT NULL
+    modifier_id bigint NOT NULL,
+    unit_quantity double precision,
+    description character varying(155)
 );
 
 
@@ -263,10 +391,10 @@ ALTER TABLE public.unit_modifiers ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTI
 -- Data for Name: fulfillment_types; Type: TABLE DATA; Schema: public; Owner: pguser
 --
 
-COPY public.fulfillment_types (id, price_modifier_id, name) FROM stdin;
-1	2	Неспешная
-2	\N	Стандартная
-3	4	Экспресс
+COPY public.fulfillment_types (id, modifier_id, name, description) FROM stdin;
+3	4	Экспресс	Наценка за экспресс выполнение
+2	\N	Стандартная	\N
+1	2	Неспешная	Скидка за неспешное выполнение
 \.
 
 
@@ -274,9 +402,9 @@ COPY public.fulfillment_types (id, price_modifier_id, name) FROM stdin;
 -- Data for Name: item_types; Type: TABLE DATA; Schema: public; Owner: pguser
 --
 
-COPY public.item_types (id, type, price_modifier_id) FROM stdin;
-1	Детская	3
-2	Взрослая	\N
+COPY public.item_types (id, name, modifier_id, description) FROM stdin;
+2	Взрослая	\N	\N
+1	Детская	3	Скидка за детские вещи
 \.
 
 
@@ -299,6 +427,65 @@ COPY public.items (id, name) FROM stdin;
 5	Платье
 13	Рубашка
 14	Юбка
+\.
+
+
+--
+-- Data for Name: order_price_modifiers; Type: TABLE DATA; Schema: public; Owner: pguser
+--
+
+COPY public.order_price_modifiers (id, modifier_type_id, description, percent, order_id, service_id) FROM stdin;
+7	1	Скидка за более 10кг вещей	20	\N	7
+8	2	Наценка за экспресс выполнение	50	9	\N
+9	1	Скидка за более 10кг вещей	20	\N	8
+10	2	Наценка за экспресс выполнение	50	10	\N
+11	1	Скидка за детские вещи	50	\N	11
+12	1	Скидка за более 10кг вещей	20	\N	11
+13	1	Скидка за детские вещи	50	\N	13
+\.
+
+
+--
+-- Data for Name: orders; Type: TABLE DATA; Schema: public; Owner: pguser
+--
+
+COPY public.orders (id, user_name, phone_number, total, final, creation_date) FROM stdin;
+9	Исмаил	+998998152821	141.8	170.1	2025-03-21 02:48:00
+10	Исмаил	+998998152821	141.8	170.1	2025-03-21 21:49:12.402377
+11	Test		40	40	2025-03-23 20:13:17.454124
+12	TEst2		7	7	2025-03-23 20:14:44.335402
+13	TEssadsa	41432534512321	99	39.6	2025-03-23 20:59:18.995144
+14	TEste231	415434312423	93.5	73.5	2025-03-23 21:19:37.510935
+\.
+
+
+--
+-- Data for Name: orders_service_items; Type: TABLE DATA; Schema: public; Owner: pguser
+--
+
+COPY public.orders_service_items (id, service_item_id, quantity, price, order_service_id) FROM stdin;
+17	103	2	20	9
+18	126	2	3.5	10
+19	119	11	9	11
+20	115	5	10	12
+21	103	2	20	13
+22	127	1	3.5	14
+\.
+
+
+--
+-- Data for Name: orders_services; Type: TABLE DATA; Schema: public; Owner: pguser
+--
+
+COPY public.orders_services (id, order_id, service_id) FROM stdin;
+7	9	3
+8	10	3
+9	11	1
+10	12	5
+11	13	3
+12	14	3
+13	14	1
+14	14	5
 \.
 
 
@@ -328,70 +515,70 @@ COPY public.price_modifiers_types (id, modifier) FROM stdin;
 -- Data for Name: service_items; Type: TABLE DATA; Schema: public; Owner: pguser
 --
 
-COPY public.service_items (service_id, item_id, service_unit_id, price, sub_service_id) FROM stdin;
-1	1	2	20	\N
-1	2	2	10	\N
-1	3	2	15	\N
-1	4	2	15	\N
-1	5	2	15	\N
-1	6	2	20	\N
-2	1	2	5	\N
-2	2	2	5	\N
-2	3	2	5	\N
-2	4	2	5	\N
-2	5	2	5	\N
-2	6	2	5	\N
-3	7	1	10	\N
-3	8	1	8	\N
-3	9	1	12	\N
-3	10	1	15	\N
-3	11	1	9	\N
-3	12	1	10	\N
-4	13	2	5	\N
-4	2	2	3	\N
-4	14	2	2	\N
-4	5	2	6	\N
-4	3	2	8	\N
-5	1	2	3.5	1
-5	2	2	3.5	1
-5	3	2	3.5	1
-5	4	2	3.5	1
-5	5	2	3.5	1
-5	6	2	3.5	1
-5	13	2	3.5	1
-5	14	2	3.5	1
-5	1	2	3.5	2
-5	2	2	3.5	2
-5	3	2	3.5	2
-5	4	2	3.5	2
-5	5	2	3.5	2
-5	6	2	3.5	2
-5	13	2	3.5	2
-5	14	2	3.5	2
-6	1	2	5	3
-6	2	2	5	3
-6	3	2	5	3
-6	4	2	5	3
-6	5	2	5	3
-6	6	2	5	3
-6	13	2	5	3
-6	14	2	5	3
-6	1	2	3	4
-6	2	2	3	4
-6	3	2	3	4
-6	4	2	3	4
-6	5	2	3	4
-6	6	2	3	4
-6	13	2	3	4
-6	14	2	3	4
-6	1	2	2	5
-6	2	2	2	5
-6	3	2	2	5
-6	4	2	2	5
-6	5	2	2	5
-6	6	2	2	5
-6	13	2	2	5
-6	14	2	2	5
+COPY public.service_items (id, item_id, price, service_id, sub_service_id) FROM stdin;
+103	1	20	1	\N
+104	2	10	1	\N
+105	3	15	1	\N
+106	4	15	1	\N
+107	5	15	1	\N
+108	6	20	1	\N
+109	1	5	2	\N
+110	2	5	2	\N
+111	3	5	2	\N
+112	4	5	2	\N
+113	5	5	2	\N
+114	6	5	2	\N
+115	7	10	3	\N
+116	8	8	3	\N
+117	9	12	3	\N
+118	10	15	3	\N
+119	11	9	3	\N
+120	12	10	3	\N
+121	13	5	4	\N
+122	2	3	4	\N
+123	14	2	4	\N
+124	5	6	4	\N
+125	3	8	4	\N
+126	1	3.5	\N	1
+127	2	3.5	\N	1
+128	3	3.5	\N	1
+129	4	3.5	\N	1
+130	5	3.5	\N	1
+131	6	3.5	\N	1
+132	13	3.5	\N	1
+133	14	3.5	\N	1
+134	1	3.5	\N	2
+135	2	3.5	\N	2
+136	3	3.5	\N	2
+137	4	3.5	\N	2
+138	5	3.5	\N	2
+139	6	3.5	\N	2
+140	13	3.5	\N	2
+141	14	3.5	\N	2
+142	1	5	\N	3
+143	2	5	\N	3
+144	3	5	\N	3
+145	4	5	\N	3
+146	5	5	\N	3
+147	6	5	\N	3
+148	13	5	\N	3
+149	14	5	\N	3
+150	1	3	\N	4
+151	2	3	\N	4
+152	3	3	\N	4
+153	4	3	\N	4
+154	5	3	\N	4
+155	6	3	\N	4
+156	13	3	\N	4
+157	14	3	\N	4
+158	1	2	\N	5
+159	2	2	\N	5
+160	3	2	\N	5
+161	4	2	\N	5
+162	5	2	\N	5
+163	6	2	\N	5
+164	13	2	\N	5
+165	14	2	\N	5
 \.
 
 
@@ -399,13 +586,13 @@ COPY public.service_items (service_id, item_id, service_unit_id, price, sub_serv
 -- Data for Name: services; Type: TABLE DATA; Schema: public; Owner: pguser
 --
 
-COPY public.services (id, name) FROM stdin;
-1	Химчистка
-2	Ручная стирка
-3	Общие услуги по стирке
-4	Гладильные услуги
-5	Ремонт одежды
-6	Удаление пятен
+COPY public.services (id, name, unit_id) FROM stdin;
+1	Химчистка	2
+2	Ручная стирка	2
+3	Общие услуги по стирке	1
+4	Гладильные услуги	2
+5	Ремонт одежды	2
+6	Удаление пятен	2
 \.
 
 
@@ -436,8 +623,8 @@ COPY public.unit (id, unit) FROM stdin;
 -- Data for Name: unit_modifiers; Type: TABLE DATA; Schema: public; Owner: pguser
 --
 
-COPY public.unit_modifiers (id, unit_id, modifier_id) FROM stdin;
-1	1	1
+COPY public.unit_modifiers (id, unit_id, modifier_id, unit_quantity, description) FROM stdin;
+3	1	1	10	Скидка за более 10кг вещей
 \.
 
 
@@ -463,6 +650,34 @@ SELECT pg_catalog.setval('public.items_id_seq', 19, true);
 
 
 --
+-- Name: order_price_modifiers_id_seq; Type: SEQUENCE SET; Schema: public; Owner: pguser
+--
+
+SELECT pg_catalog.setval('public.order_price_modifiers_id_seq', 13, true);
+
+
+--
+-- Name: orders_id_seq; Type: SEQUENCE SET; Schema: public; Owner: pguser
+--
+
+SELECT pg_catalog.setval('public.orders_id_seq', 14, true);
+
+
+--
+-- Name: orders_service_items_id_seq; Type: SEQUENCE SET; Schema: public; Owner: pguser
+--
+
+SELECT pg_catalog.setval('public.orders_service_items_id_seq', 22, true);
+
+
+--
+-- Name: orders_services_id_seq; Type: SEQUENCE SET; Schema: public; Owner: pguser
+--
+
+SELECT pg_catalog.setval('public.orders_services_id_seq', 14, true);
+
+
+--
 -- Name: price_modifiers_id_seq; Type: SEQUENCE SET; Schema: public; Owner: pguser
 --
 
@@ -475,7 +690,12 @@ SELECT pg_catalog.setval('public.price_modifiers_id_seq', 2, true);
 
 SELECT pg_catalog.setval('public.price_modifiers_id_seq1', 4, true);
 
-SELECT pg_catalog.setval('public.service_items_seq', 54, true);
+
+--
+-- Name: service_items_seq; Type: SEQUENCE SET; Schema: public; Owner: pguser
+--
+
+SELECT pg_catalog.setval('public.service_items_seq', 165, true);
 
 
 --
@@ -503,7 +723,15 @@ SELECT pg_catalog.setval('public.sub_services_id_seq', 7, true);
 -- Name: unit_modifiers_id_seq; Type: SEQUENCE SET; Schema: public; Owner: pguser
 --
 
-SELECT pg_catalog.setval('public.unit_modifiers_id_seq', 1, true);
+SELECT pg_catalog.setval('public.unit_modifiers_id_seq', 3, true);
+
+
+--
+-- Name: fulfillment_types fulfillment_types_pkey; Type: CONSTRAINT; Schema: public; Owner: pguser
+--
+
+ALTER TABLE ONLY public.fulfillment_types
+    ADD CONSTRAINT fulfillment_types_pkey PRIMARY KEY (id);
 
 
 --
@@ -523,6 +751,38 @@ ALTER TABLE ONLY public.items
 
 
 --
+-- Name: order_price_modifiers order_price_modifiers_pkey; Type: CONSTRAINT; Schema: public; Owner: pguser
+--
+
+ALTER TABLE ONLY public.order_price_modifiers
+    ADD CONSTRAINT order_price_modifiers_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: orders orders_pkey; Type: CONSTRAINT; Schema: public; Owner: pguser
+--
+
+ALTER TABLE ONLY public.orders
+    ADD CONSTRAINT orders_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: orders_service_items orders_service_items_pkey; Type: CONSTRAINT; Schema: public; Owner: pguser
+--
+
+ALTER TABLE ONLY public.orders_service_items
+    ADD CONSTRAINT orders_service_items_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: orders_services orders_services_pkey; Type: CONSTRAINT; Schema: public; Owner: pguser
+--
+
+ALTER TABLE ONLY public.orders_services
+    ADD CONSTRAINT orders_services_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: price_modifiers_types price_modifiers_pkey; Type: CONSTRAINT; Schema: public; Owner: pguser
 --
 
@@ -536,6 +796,14 @@ ALTER TABLE ONLY public.price_modifiers_types
 
 ALTER TABLE ONLY public.price_modifiers
     ADD CONSTRAINT price_modifiers_pkey1 PRIMARY KEY (id);
+
+
+--
+-- Name: service_items service_items_pkey; Type: CONSTRAINT; Schema: public; Owner: pguser
+--
+
+ALTER TABLE ONLY public.service_items
+    ADD CONSTRAINT service_items_pkey PRIMARY KEY (id);
 
 
 --
@@ -575,7 +843,7 @@ ALTER TABLE ONLY public.unit_modifiers
 --
 
 ALTER TABLE ONLY public.fulfillment_types
-    ADD CONSTRAINT fulfillment_types_price_modifier_id_fkey FOREIGN KEY (price_modifier_id) REFERENCES public.price_modifiers(id) NOT VALID;
+    ADD CONSTRAINT fulfillment_types_price_modifier_id_fkey FOREIGN KEY (modifier_id) REFERENCES public.price_modifiers(id) NOT VALID;
 
 
 --
@@ -583,7 +851,71 @@ ALTER TABLE ONLY public.fulfillment_types
 --
 
 ALTER TABLE ONLY public.item_types
-    ADD CONSTRAINT item_types_price_modifier_id_fkey FOREIGN KEY (price_modifier_id) REFERENCES public.price_modifiers(id);
+    ADD CONSTRAINT item_types_price_modifier_id_fkey FOREIGN KEY (modifier_id) REFERENCES public.price_modifiers(id);
+
+
+--
+-- Name: order_price_modifiers order_price_modifiers_modifier_type_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: pguser
+--
+
+ALTER TABLE ONLY public.order_price_modifiers
+    ADD CONSTRAINT order_price_modifiers_modifier_type_id_fkey FOREIGN KEY (modifier_type_id) REFERENCES public.price_modifiers_types(id);
+
+
+--
+-- Name: order_price_modifiers order_price_modifiers_order_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: pguser
+--
+
+ALTER TABLE ONLY public.order_price_modifiers
+    ADD CONSTRAINT order_price_modifiers_order_id_fkey FOREIGN KEY (order_id) REFERENCES public.orders(id) NOT VALID;
+
+
+--
+-- Name: order_price_modifiers order_price_modifiers_service_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: pguser
+--
+
+ALTER TABLE ONLY public.order_price_modifiers
+    ADD CONSTRAINT order_price_modifiers_service_id_fkey FOREIGN KEY (service_id) REFERENCES public.orders_services(id) NOT VALID;
+
+
+--
+-- Name: orders_service_items orders_service_items_order_service_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: pguser
+--
+
+ALTER TABLE ONLY public.orders_service_items
+    ADD CONSTRAINT orders_service_items_order_service_id_fkey FOREIGN KEY (order_service_id) REFERENCES public.orders_services(id) NOT VALID;
+
+
+--
+-- Name: orders_service_items orders_service_items_service_item_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: pguser
+--
+
+ALTER TABLE ONLY public.orders_service_items
+    ADD CONSTRAINT orders_service_items_service_item_id_fkey FOREIGN KEY (service_item_id) REFERENCES public.service_items(id);
+
+
+--
+-- Name: orders_services orders_services_order_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: pguser
+--
+
+ALTER TABLE ONLY public.orders_services
+    ADD CONSTRAINT orders_services_order_id_fkey FOREIGN KEY (order_id) REFERENCES public.orders(id);
+
+
+--
+-- Name: orders_services orders_services_service_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: pguser
+--
+
+ALTER TABLE ONLY public.orders_services
+    ADD CONSTRAINT orders_services_service_id_fkey FOREIGN KEY (service_id) REFERENCES public.services(id) NOT VALID;
+
+
+--
+-- Name: orders_services orders_services_service_id_fkey1; Type: FK CONSTRAINT; Schema: public; Owner: pguser
+--
+
+ALTER TABLE ONLY public.orders_services
+    ADD CONSTRAINT orders_services_service_id_fkey1 FOREIGN KEY (service_id) REFERENCES public.sub_services(id) NOT VALID;
 
 
 --
@@ -611,19 +943,19 @@ ALTER TABLE ONLY public.service_items
 
 
 --
--- Name: service_items service_items_service_unit_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: pguser
---
-
-ALTER TABLE ONLY public.service_items
-    ADD CONSTRAINT service_items_service_unit_id_fkey FOREIGN KEY (service_unit_id) REFERENCES public.unit(id) NOT VALID;
-
-
---
 -- Name: service_items service_items_sub_service_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: pguser
 --
 
 ALTER TABLE ONLY public.service_items
     ADD CONSTRAINT service_items_sub_service_id_fkey FOREIGN KEY (sub_service_id) REFERENCES public.sub_services(id) NOT VALID;
+
+
+--
+-- Name: services services_unit_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: pguser
+--
+
+ALTER TABLE ONLY public.services
+    ADD CONSTRAINT services_unit_id_fkey FOREIGN KEY (unit_id) REFERENCES public.unit(id) NOT VALID;
 
 
 --
@@ -654,62 +986,3 @@ ALTER TABLE ONLY public.unit_modifiers
 -- PostgreSQL database dump complete
 --
 
---
--- Database "postgres" dump
---
-
---
--- PostgreSQL database dump
---
-
--- Dumped from database version 15.12
--- Dumped by pg_dump version 15.12
-
-SET statement_timeout = 0;
-SET lock_timeout = 0;
-SET idle_in_transaction_session_timeout = 0;
-SET client_encoding = 'UTF8';
-SET standard_conforming_strings = on;
-SELECT pg_catalog.set_config('search_path', '', false);
-SET check_function_bodies = false;
-SET xmloption = content;
-SET client_min_messages = warning;
-SET row_security = off;
-
-DROP DATABASE postgres;
---
--- Name: postgres; Type: DATABASE; Schema: -; Owner: pguser
---
-
-CREATE DATABASE postgres WITH TEMPLATE = template0 ENCODING = 'UTF8' LOCALE_PROVIDER = libc LOCALE = 'en_US.utf8';
-
-
-ALTER DATABASE postgres OWNER TO pguser;
-
-\connect postgres
-
-SET statement_timeout = 0;
-SET lock_timeout = 0;
-SET idle_in_transaction_session_timeout = 0;
-SET client_encoding = 'UTF8';
-SET standard_conforming_strings = on;
-SELECT pg_catalog.set_config('search_path', '', false);
-SET check_function_bodies = false;
-SET xmloption = content;
-SET client_min_messages = warning;
-SET row_security = off;
-
---
--- Name: DATABASE postgres; Type: COMMENT; Schema: -; Owner: pguser
---
-
-COMMENT ON DATABASE postgres IS 'default administrative connection database';
-
-
---
--- PostgreSQL database dump complete
---
-
---
--- PostgreSQL database cluster dump complete
---

@@ -1,5 +1,5 @@
 import type { ServiceItem, ServicesCommonResponse, ServiceSubService } from '../types/services';
-import $api from '../worker';
+import $api from '../client';
 
 export function fetchAllAbleServices(): Promise<ServicesCommonResponse> {
   return $api('/services', {
