@@ -1,0 +1,47 @@
+.chose-service-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 500px;
+
+  &__body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  &__body-item {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  &__body-item-service-selects {
+    display: flex;
+    gap: 10px;
+
+    &__service {
+      width: calc(60% - 10px);
+    }
+
+    &__item-type {
+      width: 40%;
+    }
+  }
+
+  &__added-items-list {
+    display: flex;
+    gap: 10px;
+
+    &__value .n-tag__content {
+      display: flex;
+      gap: 5px;
+    }
+  }
+
+
+  &__footer {
+    display: flex;
+    justify-content: end;
+  }
+}

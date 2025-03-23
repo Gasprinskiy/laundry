@@ -1,11 +1,13 @@
 import { ofetch } from "ofetch";
 
-export const $api = ofetch.create({
-  baseURL: "/api",
+const $api = ofetch.create({
+  // baseURL: "/api",
+  baseURL: "http://localhost:3000",
   headers: {
     Accept: "application/json",
-    "Cache-Control": "no-cache",
   },
-
 })
+
+export default $api
+
 
